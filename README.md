@@ -1,10 +1,14 @@
-# Araihu Dagger runner
+# Araihu Dagger
 
-Pinned GitHub Actions runner image for Araihu's Hostinger executor.
+Shared Dagger foundation for Araihu pipelines.
 
-The image extends the existing Ubuntu Noble runner and adds Dagger CLI
-`v0.21.8`. Dagger Engine runs separately on the host; jobs connect through
-`_EXPERIMENTAL_DAGGER_RUNNER_HOST`.
+Repository surfaces:
+
+- `images/runner`: thin Hostinger runner image containing Dagger CLI.
+- `modules`: reusable CI modules and toolchains shared by Araihu repositories.
+
+Build tools belong inside Dagger containers. The runner image remains minimal:
+Dagger CLI `v0.21.8` plus connection to the separately managed host Engine.
 
 ## Image
 
@@ -15,7 +19,7 @@ ghcr.io/araihu/dagger:0.21.8-runner-2.336.0
 Production consumers should pin the published manifest digest, not a mutable
 tag. CLI and Engine versions must match.
 
-## Build inputs
+## Runner build inputs
 
 - Runner: `2.336.0-ubuntu-noble`, pinned by digest.
 - Dagger CLI: `v0.21.8`, verified against the official release SHA-256.

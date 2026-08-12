@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - Dockerfile
+      - images/runner/**
       - .github/workflows/publish.yml
   workflow_dispatch:
 
@@ -40,7 +40,7 @@ jobs:
         id: publish
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
-          context: .
+          context: images/runner
           platforms: linux/amd64
           pull: true
           push: true
