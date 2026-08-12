@@ -29,6 +29,11 @@ func (m *GoCI) Base() *dagger.Container {
 		WithMountedDirectory("/src", m.Source)
 }
 
+// Smoke executes the pinned Go toolchain in the transformed base container.
+func (m *GoCI) Smoke() *dagger.Container {
+	return m.Base().WithExec([]string{"go", "version"})
+}
+
 // Test downloads declared modules and runs go test for the selected module directory.
 func (m *GoCI) Test(
 	module string, // +optional

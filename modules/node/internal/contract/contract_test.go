@@ -19,6 +19,17 @@ func TestPublicPrimitiveHasNoPersistentCacheSelector(t *testing.T) {
 	}
 }
 
+func TestSmokeExecutesPinnedToolchain(t *testing.T) {
+	source, err := os.ReadFile("../../main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), `func (m *NodeCI) Smoke() *dagger.Container`) ||
+		!strings.Contains(string(source), `WithExec([]string{"node", "--version"})`) {
+		t.Fatal("Node smoke must execute the pinned toolchain in Base")
+	}
+}
+
 func TestWorkspaceRejectsEscape(t *testing.T) {
 	t.Parallel()
 

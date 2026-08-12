@@ -261,6 +261,13 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 				}
 			}
 			return (*NodeCI).Run(&parent, workspace, script, args, ignoreScripts)
+		case "Smoke":
+			var parent NodeCI
+			err = json.Unmarshal(parentJSON, &parent)
+			if err != nil {
+				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
+			}
+			return (*NodeCI).Smoke(&parent), nil
 		case "":
 			var parent NodeCI
 			err = json.Unmarshal(parentJSON, &parent)

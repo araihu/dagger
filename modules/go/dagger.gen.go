@@ -254,6 +254,13 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 				}
 			}
 			return (*GoCI).Generate(&parent, module, packages)
+		case "Smoke":
+			var parent GoCI
+			err = json.Unmarshal(parentJSON, &parent)
+			if err != nil {
+				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
+			}
+			return (*GoCI).Smoke(&parent), nil
 		case "Test":
 			var parent GoCI
 			err = json.Unmarshal(parentJSON, &parent)

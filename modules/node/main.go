@@ -28,6 +28,11 @@ func (m *NodeCI) Base() *dagger.Container {
 		WithMountedDirectory("/src", m.Source)
 }
 
+// Smoke executes the pinned Node toolchain in the transformed base container.
+func (m *NodeCI) Smoke() *dagger.Container {
+	return m.Base().WithExec([]string{"node", "--version"})
+}
+
 // Install runs npm ci. Set ignoreScripts when dependency lifecycle scripts are not required.
 func (m *NodeCI) Install(
 	workspace string, // +optional

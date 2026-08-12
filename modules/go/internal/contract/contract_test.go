@@ -19,14 +19,14 @@ func TestPublicPrimitiveHasNoPersistentCacheSelector(t *testing.T) {
 	}
 }
 
-func TestWorkflowBaseContractUsesStructuralContainerQuery(t *testing.T) {
+func TestWorkflowExecutesTransformedBaseContainer(t *testing.T) {
 	workflow, err := os.ReadFile("../../../../.github/workflows/modules.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
 	contents := string(workflow)
-	if !strings.Contains(contents, `call base id`) {
-		t.Fatal("smallest runtime contract must resolve the transformed base container ID")
+	if !strings.Contains(contents, `call smoke stdout`) {
+		t.Fatal("smallest runtime contract must execute the smoke command")
 	}
 	if strings.Contains(contents, `call base stdout`) {
 		t.Fatal("base container has no command; stdout would fail at runtime")
@@ -34,8 +34,13 @@ func TestWorkflowBaseContractUsesStructuralContainerQuery(t *testing.T) {
 	if strings.Contains(contents, `call base image-ref`) {
 		t.Fatal("image-ref is invalid after base applies env and mount transforms")
 	}
-	if !strings.Contains(contents, `test -n "$container_id"`) {
-		t.Fatal("runtime contract must reject an empty container ID")
+	source, err := os.ReadFile("../../main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(source), `func (m *GoCI) Smoke() *dagger.Container`) ||
+		!strings.Contains(string(source), `WithExec([]string{"go", "version"})`) {
+		t.Fatal("Go smoke must execute the pinned toolchain in Base")
 	}
 }
 
