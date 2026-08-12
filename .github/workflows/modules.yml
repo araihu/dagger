@@ -1,0 +1,106 @@
+name: Shared Dagger modules
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - modules/**
+      - .github/scripts/setup-dagger.sh
+      - .github/workflows/modules.yml
+  pull_request:
+    paths:
+      - modules/**
+      - .github/scripts/setup-dagger.sh
+      - .github/workflows/modules.yml
+
+permissions:
+  contents: read
+
+jobs:
+  module:
+    name: ${{ matrix.module }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [go, node, generated, verified-download]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install exact Dagger CLI
+        env:
+          RUNNER_ARCH: ${{ runner.arch }}
+          RUNNER_ENVIRONMENT: ${{ runner.environment }}
+          RUNNER_OS: ${{ runner.os }}
+        run: |
+          set -euo pipefail
+          bash .github/scripts/setup-dagger.sh
+
+      - name: Set up exact Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.26.5
+          cache: false
+
+      - name: Verify generated SDK bindings
+        env:
+          MODULE: ${{ matrix.module }}
+        run: |
+          set -euo pipefail
+          dagger -m "modules/$MODULE" develop
+          git diff --exit-code -- "modules/$MODULE"
+          if grep -Eq '^type (Host|Engine|EngineCache|EngineCacheEntry|EngineCacheEntrySet) struct' \
+            "modules/$MODULE/internal/dagger/dagger.gen.go"; then
+            echo "Privileged engine-only types leaked into module SDK bindings" >&2
+            exit 1
+          fi
+
+      - name: Verify Go module
+        working-directory: modules/${{ matrix.module }}
+        run: |
+          set -euo pipefail
+          unformatted="$(gofmt -l .)"
+          test -z "$unformatted"
+          cp go.mod "$RUNNER_TEMP/${{ matrix.module }}.go.mod"
+          if test -f go.sum; then
+            cp go.sum "$RUNNER_TEMP/${{ matrix.module }}.go.sum"
+          fi
+          go mod tidy
+          cmp go.mod "$RUNNER_TEMP/${{ matrix.module }}.go.mod"
+          if test -f "$RUNNER_TEMP/${{ matrix.module }}.go.sum"; then
+            cmp go.sum "$RUNNER_TEMP/${{ matrix.module }}.go.sum"
+          else
+            test ! -e go.sum
+          fi
+          DAGGER_SESSION_PORT=1 DAGGER_SESSION_TOKEN=offline-test go test ./... -count=1
+          go build ./...
+
+      - name: Run smallest Dagger contract
+        env:
+          MODULE: ${{ matrix.module }}
+        run: |
+          set -euo pipefail
+          case "$MODULE" in
+            go|node)
+              dagger -m "modules/$MODULE" call smoke stdout
+              ;;
+            generated)
+              dagger -m modules/generated call assert-clean \
+                --committed=modules/generated \
+                --regenerated=modules/generated
+              ;;
+            verified-download)
+              dagger -m modules/verified-download call fetch \
+                --url=https://raw.githubusercontent.com/dagger/dagger/v0.21.8/LICENSE \
+                --sha256=4442a42853bd02d190ce5f06f76ba62f1a0ff803e8cc1a524dcaa7085a0b100b \
+                --name=LICENSE \
+                contents >/dev/null
+              ;;
+            *)
+              echo "Unknown module: $MODULE" >&2
+              exit 1
+              ;;
+          esac
