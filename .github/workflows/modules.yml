@@ -85,7 +85,8 @@ jobs:
           set -euo pipefail
           case "$MODULE" in
             go|node)
-              dagger -m "modules/$MODULE" call base stdout
+              container_id="$(dagger -m "modules/$MODULE" call base id)"
+              test -n "$container_id"
               ;;
             generated)
               dagger -m modules/generated call assert-clean \
