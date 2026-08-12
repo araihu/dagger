@@ -10,6 +10,11 @@ Repository surfaces:
 Build tools belong inside Dagger containers. The runner image remains minimal:
 Dagger CLI `v0.21.8` plus connection to the separately managed host Engine.
 
+Remote module consumers must pin the full reviewed Git commit, for example
+`github.com/araihu/dagger/modules/go@<40-character-commit>`. The shared modules
+target Dagger Engine v0.21.8 and keep project-specific publish/deploy orchestration
+in each consuming repository.
+
 ## Image
 
 ```text
