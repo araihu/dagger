@@ -52,6 +52,11 @@ jobs:
           set -euo pipefail
           dagger -m "modules/$MODULE" develop
           git diff --exit-code -- "modules/$MODULE"
+          if grep -Eq '^type (Host|Engine|EngineCache|EngineCacheEntry|EngineCacheEntrySet) struct' \
+            "modules/$MODULE/internal/dagger/dagger.gen.go"; then
+            echo "Privileged engine-only types leaked into module SDK bindings" >&2
+            exit 1
+          fi
 
       - name: Verify Go module
         working-directory: modules/${{ matrix.module }}
