@@ -7,11 +7,13 @@ on:
       - modules/**
       - .github/scripts/setup-dagger.sh
       - .github/workflows/modules.yml
+      - .github/workflows/codeql.yml
   pull_request:
     paths:
       - modules/**
       - .github/scripts/setup-dagger.sh
       - .github/workflows/modules.yml
+      - .github/workflows/codeql.yml
 
 permissions:
   contents: read
