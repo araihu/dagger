@@ -1,0 +1,24 @@
+name: Arai Hû Reviewdog
+description: Publish validated Dagger diagnostics as GitHub PR annotations
+
+inputs:
+  manifest:
+    description: Path to the schema-v1 report manifest
+    required: true
+  token:
+    description: GitHub token used by Reviewdog to read the PR diff
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install pinned Reviewdog
+      uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f
+      with:
+        reviewdog_version: v0.21.0
+    - name: Publish annotations
+      shell: bash
+      env:
+        REVIEWDOG_MANIFEST: ${{ inputs.manifest }}
+        REVIEWDOG_GITHUB_API_TOKEN: ${{ inputs.token }}
+      run: '"$GITHUB_ACTION_PATH/run.sh"'

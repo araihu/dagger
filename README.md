@@ -6,6 +6,8 @@ Repository surfaces:
 
 - `images/runner`: thin Hostinger runner image containing Dagger CLI.
 - `modules`: reusable CI modules and toolchains shared by Araihu repositories.
+- `actions/reviewdog`: validated Reviewdog adapter for diagnostics exported by
+  Dagger CI.
 
 Build tools belong inside Dagger containers. The runner image remains minimal:
 Dagger CLI `v0.21.8` plus connection to the separately managed host Engine.
