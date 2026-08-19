@@ -1,0 +1,57 @@
+name: Reviewdog action
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - actions/reviewdog/**
+      - .github/workflows/reviewdog-action.yml
+  pull_request:
+    paths:
+      - actions/reviewdog/**
+      - .github/workflows/reviewdog-action.yml
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate shell syntax
+        run: bash -n actions/reviewdog/run.sh actions/reviewdog/test.sh
+
+      - name: Validate action metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          ruby -e '
+            require "yaml"
+            action = YAML.safe_load(File.read("actions/reviewdog/action.yml"), aliases: false)
+            abort "not composite" unless action.dig("runs", "using") == "composite"
+            abort "manifest not required" unless action.dig("inputs", "manifest", "required") == true
+            abort "token not required" unless action.dig("inputs", "token", "required") == true
+            steps = action.dig("runs", "steps")
+            abort "wrong setup pin" unless steps[0]["uses"] == "reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f"
+            abort "wrong version" unless steps[0].dig("with", "reviewdog_version") == "v0.21.0"
+          '
+
+      - name: Install pinned Reviewdog for parser smoke test
+        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f
+        with:
+          reviewdog_version: v0.21.0
+
+      - name: Validate real RDJSONL parser
+        run: |
+          set -euo pipefail
+          reviewdog -f=rdjsonl -reporter=local -filter-mode=nofilter \
+            < actions/reviewdog/testdata/smoke/diagnostics.rdjsonl \
+            > /dev/null
+
+      - name: Run behavior tests
+        run: bash actions/reviewdog/test.sh

@@ -1,0 +1,7 @@
+diff --git a/example.go b/example.go
+--- a/example.go
++++ b/example.go
+@@ -1,2 +1,2 @@
+ package sample
+-func Example(){ }
++func Example() {}

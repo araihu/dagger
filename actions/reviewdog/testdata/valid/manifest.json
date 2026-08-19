@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "reports": [
+    {
+      "name": "go-vet",
+      "path": "go-vet.txt",
+      "format": "govet",
+      "level": "error",
+      "filter_mode": "file"
+    },
+    {
+      "name": "gofmt",
+      "path": "gofmt.diff",
+      "format": "diff",
+      "diff_strip": 0
+    }
+  ]
+}

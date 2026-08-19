@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "reports": [
+    {
+      "name": "reviewdog-smoke",
+      "path": "diagnostics.rdjsonl",
+      "format": "rdjsonl",
+      "level": "info",
+      "filter_mode": "nofilter"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+internal/sample.go:12:2: fmt.Printf call has arguments but no formatting directives
