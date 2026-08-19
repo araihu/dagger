@@ -103,7 +103,9 @@ reports. It rejects:
 - shell metacharacters and control characters in manifest fields.
 
 Manifest values are arguments and paths only. They never select an executable
-and are never evaluated as shell code.
+and are never evaluated as shell code. The manifest and each report remain open
+through validated Linux file descriptors, so a concurrent pathname replacement
+cannot change the entries or bytes later consumed by Reviewdog.
 
 ## Failure behavior
 
@@ -120,7 +122,12 @@ Keep PR diagnostics focused and preserve complete tool output separately as a
 workflow artifact or log.
 
 The action is Linux-only in its first release and requires Bash 5, `jq`, GNU
-`realpath`, and GNU `stat`. GitHub-hosted Ubuntu 24.04 provides these tools.
+`realpath`, GNU `stat`, and `/proc/self/fd`. GitHub-hosted Ubuntu 24.04 provides
+these interfaces.
+
+The GitHub token is copied into a shell variable and removed from the inherited
+environment before manifest validation or parser discovery. It is supplied
+only to each Reviewdog annotation process.
 
 ## Troubleshooting
 

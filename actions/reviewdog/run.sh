@@ -15,13 +15,22 @@ manifest=${REVIEWDOG_MANIFEST:-}
 token=${REVIEWDOG_GITHUB_API_TOKEN:-}
 test -n "$manifest" || die "manifest input is empty"
 test -n "$token" || die "token input is empty"
+unset REVIEWDOG_GITHUB_API_TOKEN
 test -e "$manifest" || die "manifest does not exist"
 test ! -L "$manifest" || die "manifest must not be a symlink"
 test -f "$manifest" || die "manifest must be a regular file"
 
 manifest_real=$(realpath -e -- "$manifest")
 report_root=$(dirname -- "$manifest_real")
-manifest_size=$(stat -c %s -- "$manifest_real")
+if ! exec {manifest_fd}< "$manifest_real"; then
+  die "manifest could not be opened"
+fi
+manifest_descriptor="/proc/self/fd/$manifest_fd"
+opened_manifest_path=$(realpath -e -- "$manifest_descriptor")
+test "$opened_manifest_path" = "$manifest_real" ||
+  die "opened manifest differs from validated path"
+test -f "$manifest_descriptor" || die "opened manifest must be a regular file"
+manifest_size=$(stat -Lc %s -- "$manifest_descriptor")
 test "$manifest_size" -le 65536 || die "manifest exceeds 65536 bytes"
 
 if ! jq -e '
@@ -55,7 +64,7 @@ if ! jq -e '
       )
     )
   )
-' "$manifest_real" >/dev/null; then
+' "$manifest_descriptor" >/dev/null; then
   die "manifest does not match schema version 1"
 fi
 
@@ -67,7 +76,7 @@ done <<< "$parser_registry"
 test "${#supported_formats[@]}" -gt 0 || die "reviewdog parser registry is empty"
 
 declare -a names=()
-declare -a paths=()
+declare -a report_fds=()
 declare -a formats=()
 declare -a levels=()
 declare -a filter_modes=()
@@ -93,12 +102,22 @@ while IFS=$'\t' read -r name path format level filter_mode diff_strip; do
     *) die "report escapes manifest directory: $path" ;;
   esac
   test -f "$report_path" || die "report must be a regular file: $path"
-  report_size=$(stat -c %s -- "$report_path")
+  if ! exec {report_fd}< "$report_path"; then
+    die "report could not be opened: $path"
+  fi
+  descriptor_path="/proc/self/fd/$report_fd"
+  opened_path=$(realpath -e -- "$descriptor_path")
+  case "$opened_path" in
+    "$report_root"/*) ;;
+    *) die "opened report escapes manifest directory: $path" ;;
+  esac
+  test -f "$descriptor_path" || die "opened report must be a regular file: $path"
+  report_size=$(stat -Lc %s -- "$descriptor_path")
   test "$report_size" -le 10485760 || die "report exceeds 10485760 bytes: $path"
   total_report_size=$((total_report_size + report_size))
   test "$total_report_size" -le 52428800 || die "combined reports exceed 52428800 bytes"
   names+=("$name")
-  paths+=("$report_path")
+  report_fds+=("$report_fd")
   formats+=("$format")
   levels+=("$level")
   filter_modes+=("$filter_mode")
@@ -115,8 +134,9 @@ done < <(
         ((.diff_strip // "") | tostring)
       ]
     | @tsv
-  ' "$manifest_real"
+  ' "$manifest_descriptor"
 )
+exec {manifest_fd}<&-
 
 for index in "${!names[@]}"; do
   args=(
@@ -130,5 +150,8 @@ for index in "${!names[@]}"; do
   if test -n "${diff_strips[$index]}"; then
     args+=("-f.diff.strip=${diff_strips[$index]}")
   fi
-  reviewdog "${args[@]}" < "${paths[$index]}"
+  report_fd=${report_fds[$index]}
+  REVIEWDOG_GITHUB_API_TOKEN="$token" \
+    reviewdog "${args[@]}" <&"$report_fd"
+  exec {report_fd}<&-
 done

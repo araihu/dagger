@@ -30,6 +30,9 @@ mkdir -p "$FAKE_BIN" "$CALLS"
 printf '%s\n' '#!/usr/bin/env bash' > "$FAKE_BIN/reviewdog"
 printf '%s\n' 'set -euo pipefail' >> "$FAKE_BIN/reviewdog"
 printf '%s\n' 'if [[ ${1:-} == -list ]]; then' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' '  if [[ -n ${REVIEWDOG_GITHUB_API_TOKEN:-} ]]; then' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' '    printf "%s\n" set > "$REVIEWDOG_TEST_CALLS/list.token"' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' '  fi' >> "$FAKE_BIN/reviewdog"
 printf '%s\n' "  printf '%s\\n' \\" >> "$FAKE_BIN/reviewdog"
 printf '%s\n' "    'rdjson Reviewdog Diagnostic JSON Format' \\" >> "$FAKE_BIN/reviewdog"
 printf '%s\n' "    'rdjsonl Reviewdog Diagnostic JSONL Format' \\" >> "$FAKE_BIN/reviewdog"
@@ -44,6 +47,11 @@ printf '%s\n' 'fi' >> "$FAKE_BIN/reviewdog"
 printf '%s\n' 'index=1' >> "$FAKE_BIN/reviewdog"
 printf '%s\n' 'while [[ -e "$REVIEWDOG_TEST_CALLS/$index.args" ]]; do index=$((index + 1)); done' >> "$FAKE_BIN/reviewdog"
 printf '%s\n' 'printf "%s\\n" "$@" > "$REVIEWDOG_TEST_CALLS/$index.args"' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' 'if [[ -n ${REVIEWDOG_GITHUB_API_TOKEN:-} ]]; then' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' '  printf "%s\n" set > "$REVIEWDOG_TEST_CALLS/$index.token"' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' 'else' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' '  printf "%s\n" absent > "$REVIEWDOG_TEST_CALLS/$index.token"' >> "$FAKE_BIN/reviewdog"
+printf '%s\n' 'fi' >> "$FAKE_BIN/reviewdog"
 printf '%s\n' 'cat > "$REVIEWDOG_TEST_CALLS/$index.stdin"' >> "$FAKE_BIN/reviewdog"
 chmod 0755 "$FAKE_BIN/reviewdog"
 
@@ -56,6 +64,10 @@ REVIEWDOG_GITHUB_API_TOKEN=test-token \
 test -f "$CALLS/1.args" || fail "first report was not invoked"
 test -f "$CALLS/2.args" || fail "second report was not invoked"
 test ! -e "$CALLS/3.args" || fail "unexpected third report invocation"
+test ! -e "$CALLS/list.token" ||
+  fail "reviewdog parser discovery inherited GitHub token"
+assert_file_contains "$CALLS/1.token" "set"
+assert_file_contains "$CALLS/2.token" "set"
 
 assert_file_contains "$CALLS/1.args" "-name=go-vet"
 assert_file_contains "$CALLS/1.args" "-f=govet"
@@ -243,6 +255,72 @@ ln -s "$TEST_TMP" "$CASE_DIR/escape"
 jq '.reports = [{name: "escape", path: "escape/outside.txt", format: "govet"}]' \
   "$ACTION_DIR/testdata/valid/manifest.json" > "$CASE_MANIFEST"
 expect_failure intermediate_symlink_escape "$CASE_MANIFEST"
+
+new_case concurrent_report_swap
+printf 'validated diagnostic\n' > "$CASE_DIR/report.txt"
+printf 'replacement outside report root\n' > "$TEST_TMP/replacement.txt"
+jq '.reports = [{name: "race", path: "report.txt", format: "govet"}]' \
+  "$ACTION_DIR/testdata/valid/manifest.json" > "$CASE_MANIFEST"
+RACE_BIN="$CASE_DIR/race-bin"
+mkdir -p "$RACE_BIN"
+printf '%s\n' '#!/usr/bin/env bash' > "$RACE_BIN/stat"
+printf '%s\n' 'set -euo pipefail' >> "$RACE_BIN/stat"
+printf '%s\n' 'last_arg=${!#}' >> "$RACE_BIN/stat"
+printf '%s\n' 'resolved=$(realpath -e -- "$last_arg")' >> "$RACE_BIN/stat"
+printf '%s\n' 'if [[ $resolved == "$REVIEWDOG_TEST_SWAP_PATH" ]]; then' >> "$RACE_BIN/stat"
+printf '%s\n' '  /usr/bin/stat "$@"' >> "$RACE_BIN/stat"
+printf '%s\n' '  mv -- "$REVIEWDOG_TEST_SWAP_PATH" "$REVIEWDOG_TEST_SWAP_PATH.validated"' >> "$RACE_BIN/stat"
+printf '%s\n' '  ln -s -- "$REVIEWDOG_TEST_SWAP_TARGET" "$REVIEWDOG_TEST_SWAP_PATH"' >> "$RACE_BIN/stat"
+printf '%s\n' '  exit 0' >> "$RACE_BIN/stat"
+printf '%s\n' 'fi' >> "$RACE_BIN/stat"
+printf '%s\n' 'exec /usr/bin/stat "$@"' >> "$RACE_BIN/stat"
+chmod 0755 "$RACE_BIN/stat"
+rm -rf -- "$CALLS"
+mkdir -p "$CALLS"
+PATH="$RACE_BIN:$FAKE_BIN:$PATH" \
+REVIEWDOG_TEST_CALLS="$CALLS" \
+REVIEWDOG_TEST_SWAP_PATH="$CASE_DIR/report.txt" \
+REVIEWDOG_TEST_SWAP_TARGET="$TEST_TMP/replacement.txt" \
+REVIEWDOG_MANIFEST="$CASE_MANIFEST" \
+REVIEWDOG_GITHUB_API_TOKEN=test-token \
+  "$RUNNER"
+test -L "$CASE_DIR/report.txt" || fail "race fixture did not replace report path"
+printf 'validated diagnostic\n' > "$TEST_TMP/concurrent-report-expected.txt"
+cmp "$TEST_TMP/concurrent-report-expected.txt" "$CALLS/1.stdin" ||
+  fail "report was reopened after validation instead of read from validated descriptor"
+printf 'PASS: concurrent report replacement cannot change published bytes\n'
+
+new_case concurrent_manifest_swap
+printf 'validated diagnostic\n' > "$CASE_DIR/report.txt"
+jq '.reports = [{name: "race", path: "report.txt", format: "govet"}]' \
+  "$ACTION_DIR/testdata/valid/manifest.json" > "$CASE_MANIFEST"
+printf '{"schema":1,"reports":[]}\n' > "$TEST_TMP/replacement-manifest.json"
+RACE_BIN="$CASE_DIR/race-bin"
+mkdir -p "$RACE_BIN"
+printf '%s\n' '#!/usr/bin/env bash' > "$RACE_BIN/stat"
+printf '%s\n' 'set -euo pipefail' >> "$RACE_BIN/stat"
+printf '%s\n' 'last_arg=${!#}' >> "$RACE_BIN/stat"
+printf '%s\n' 'resolved=$(realpath -e -- "$last_arg")' >> "$RACE_BIN/stat"
+printf '%s\n' 'if [[ $resolved == "$REVIEWDOG_TEST_SWAP_PATH" ]]; then' >> "$RACE_BIN/stat"
+printf '%s\n' '  /usr/bin/stat "$@"' >> "$RACE_BIN/stat"
+printf '%s\n' '  mv -- "$REVIEWDOG_TEST_SWAP_PATH" "$REVIEWDOG_TEST_SWAP_PATH.validated"' >> "$RACE_BIN/stat"
+printf '%s\n' '  cp -- "$REVIEWDOG_TEST_SWAP_TARGET" "$REVIEWDOG_TEST_SWAP_PATH"' >> "$RACE_BIN/stat"
+printf '%s\n' '  exit 0' >> "$RACE_BIN/stat"
+printf '%s\n' 'fi' >> "$RACE_BIN/stat"
+printf '%s\n' 'exec /usr/bin/stat "$@"' >> "$RACE_BIN/stat"
+chmod 0755 "$RACE_BIN/stat"
+rm -rf -- "$CALLS"
+mkdir -p "$CALLS"
+PATH="$RACE_BIN:$FAKE_BIN:$PATH" \
+REVIEWDOG_TEST_CALLS="$CALLS" \
+REVIEWDOG_TEST_SWAP_PATH="$CASE_MANIFEST" \
+REVIEWDOG_TEST_SWAP_TARGET="$TEST_TMP/replacement-manifest.json" \
+REVIEWDOG_MANIFEST="$CASE_MANIFEST" \
+REVIEWDOG_GITHUB_API_TOKEN=test-token \
+  "$RUNNER"
+test -f "$CASE_MANIFEST.validated" || fail "race fixture did not replace manifest path"
+test -f "$CALLS/1.args" || fail "validated manifest descriptor was not consumed"
+printf 'PASS: concurrent manifest replacement cannot change validated entries\n'
 
 new_case manifest_symlink
 cp "$ACTION_DIR/testdata/valid/manifest.json" "$CASE_DIR/manifest-target.json"

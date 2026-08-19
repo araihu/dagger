@@ -107,11 +107,14 @@ most 32 reports.
 1. Install Reviewdog `v0.21.0` through
    `reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f`.
 2. Require Linux runner utilities `bash`, `jq`, `realpath`, and `stat`.
-3. Resolve the manifest and its containing directory without following a
-   manifest symlink.
-4. Validate the complete manifest before invoking Reviewdog.
-5. Resolve every report path and reject absolute paths, traversal, symlinks,
-   non-regular files, and files outside the manifest directory.
+3. Resolve and open the manifest and its containing directory without following
+   a manifest symlink, then retain its validated Linux file descriptor.
+4. Validate and consume the complete manifest from that descriptor before
+   invoking Reviewdog.
+5. Resolve and open every report, then validate its Linux file descriptor;
+   reject absolute paths, traversal, symlinks, non-regular files, and opened
+   files outside the manifest directory. Retain descriptors through
+   publication so path replacement cannot change consumed bytes.
 6. Reject manifests larger than 64 KiB, individual reports larger than 10 MiB,
    or combined reports larger than 50 MiB.
 7. Invoke Reviewdog once per report using fixed
@@ -119,8 +122,10 @@ most 32 reports.
 8. Pass the report through standard input. Manifest data is never evaluated as
    shell code or used to select an executable.
 
-The token is passed only as `REVIEWDOG_GITHUB_API_TOKEN` for the Reviewdog
-process. Scripts must not print it or include it in command arguments.
+The token is copied into a shell variable, removed from the inherited
+environment before external validation commands, and passed only as
+`REVIEWDOG_GITHUB_API_TOKEN` for each publishing Reviewdog process. Scripts
+must not print it or include it in command arguments.
 
 ## Failure semantics
 
@@ -163,8 +168,12 @@ Tests exercise scripts, not source-text patterns:
   names, empty lists, and excessive report counts fail before invocation.
 - Absolute paths, traversal, symlinks, missing files, directories, and size
   limit violations fail before invocation.
+- Concurrent pathname replacement cannot change bytes read through a validated
+  report descriptor or entries read through the manifest descriptor.
 - Shell metacharacters in manifest values are rejected rather than executed.
 - Empty token fails without revealing token content.
+- Parser discovery and validation commands do not inherit the GitHub token;
+  publishing Reviewdog calls do.
 - `bash -n` validates both scripts.
 
 Repository verification also reruns all four existing host-only Dagger module

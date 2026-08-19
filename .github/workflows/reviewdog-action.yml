@@ -41,5 +41,17 @@ jobs:
             abort "wrong version" unless steps[0].dig("with", "reviewdog_version") == "v0.21.0"
           '
 
+      - name: Install pinned Reviewdog for parser smoke test
+        uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f
+        with:
+          reviewdog_version: v0.21.0
+
+      - name: Validate real RDJSONL parser
+        run: |
+          set -euo pipefail
+          reviewdog -f=rdjsonl -reporter=local -filter-mode=nofilter \
+            < actions/reviewdog/testdata/smoke/diagnostics.rdjsonl \
+            > /dev/null
+
       - name: Run behavior tests
         run: bash actions/reviewdog/test.sh
