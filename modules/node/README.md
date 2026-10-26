@@ -1,6 +1,6 @@
 # node-ci
 
-Reusable Node/npm primitives for Dagger Engine v0.21.8.
+Reusable Node/npm primitives for Dagger Engine v0.21.11.
 
 - Node 24.12.0 image pinned by digest.
 - No persistent `CacheVolume`; consumers cannot accidentally share mutable PR state.

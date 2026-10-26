@@ -18,6 +18,9 @@ on:
 permissions:
   contents: read
 
+env:
+  _EXPERIMENTAL_DAGGER_RUNNER_HOST: docker-image://registry.dagger.io/engine:v0.21.11@sha256:6b557cc8b5fdfee0e2e8c82d451ac922097a1255482143e1b96c0be3ff2a303c
+
 jobs:
   module:
     name: ${{ matrix.module }}
@@ -96,7 +99,7 @@ jobs:
               ;;
             verified-download)
               dagger -m modules/verified-download call fetch \
-                --url=https://raw.githubusercontent.com/dagger/dagger/v0.21.8/LICENSE \
+                --url=https://raw.githubusercontent.com/dagger/dagger/v0.21.11/LICENSE \
                 --sha256=4442a42853bd02d190ce5f06f76ba62f1a0ff803e8cc1a524dcaa7085a0b100b \
                 --name=LICENSE \
                 contents >/dev/null

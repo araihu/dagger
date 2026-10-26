@@ -1,6 +1,6 @@
 # go-ci
 
-Reusable Go verification primitives for Dagger Engine v0.21.8.
+Reusable Go verification primitives for Dagger Engine v0.21.11.
 
 - Go 1.27.3 image pinned by digest.
 - No persistent `CacheVolume`; consumers cannot accidentally share mutable PR state.

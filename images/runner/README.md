@@ -9,8 +9,8 @@ containers, not this runner image.
 Published tags:
 
 ```text
-ghcr.io/araihu/dagger:0.21.8
-ghcr.io/araihu/dagger:0.21.8-runner-2.336.0
+ghcr.io/araihu/dagger:0.21.11
+ghcr.io/araihu/dagger:0.21.11-runner-2.336.0
 ```
 
 Production consumers must use the immutable manifest digest emitted by the

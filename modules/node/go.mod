@@ -1,8 +1,6 @@
 module dagger/node-ci
 
-go 1.26.5
-
-toolchain go1.27.3
+go 1.27.3
 
 require (
 	github.com/Khan/genqlient v0.8.1
