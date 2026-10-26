@@ -89,8 +89,11 @@ jobs:
         run: |
           set -euo pipefail
           case "$MODULE" in
-            go|node)
-              dagger -m "modules/$MODULE" call smoke stdout
+            go)
+              dagger -m modules/go call smoke stdout | grep -E '^go version go1[.]27[.]3 linux/(amd64|arm64)$'
+              ;;
+            node)
+              dagger -m modules/node call smoke stdout
               ;;
             generated)
               dagger -m modules/generated call assert-clean \
