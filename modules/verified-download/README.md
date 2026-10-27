@@ -1,6 +1,6 @@
 # verified-download
 
-Immutable HTTPS downloads for Dagger Engine v0.21.8.
+Immutable HTTPS downloads for Dagger Engine v0.21.11.
 
 The module rejects non-HTTPS URLs and malformed SHA-256 values, then delegates content verification to Dagger's native `HTTP(checksum:)` operation. It does not execute, unpack, publish, or deploy downloaded content.
 

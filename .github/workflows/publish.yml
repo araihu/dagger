@@ -19,6 +19,9 @@ concurrency:
   group: publish-runner-image
   cancel-in-progress: false
 
+env:
+  _EXPERIMENTAL_DAGGER_RUNNER_HOST: docker-image://registry.dagger.io/engine:v0.21.11@sha256:6b557cc8b5fdfee0e2e8c82d451ac922097a1255482143e1b96c0be3ff2a303c
+
 jobs:
   publish:
     runs-on: ubuntu-24.04
@@ -45,8 +48,8 @@ jobs:
           pull: true
           push: true
           tags: |
-            ghcr.io/araihu/dagger:0.21.8
-            ghcr.io/araihu/dagger:0.21.8-runner-2.336.0
+            ghcr.io/araihu/dagger:0.21.11
+            ghcr.io/araihu/dagger:0.21.11-runner-2.336.0
             ghcr.io/araihu/dagger:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/araihu/dagger
@@ -64,5 +67,5 @@ jobs:
           set -euo pipefail
           docker pull "$IMAGE@$DIGEST"
           docker run --rm --entrypoint dagger "$IMAGE@$DIGEST" version \
-            | grep --fixed-strings 'dagger v0.21.8'
+            | grep --fixed-strings 'dagger v0.21.11'
           printf 'Published `%s@%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"
