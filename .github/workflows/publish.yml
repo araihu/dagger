@@ -7,23 +7,51 @@ on:
     paths:
       - images/runner/**
       - .github/workflows/publish.yml
+  pull_request:
+    paths:
+      - images/runner/**
+      - .github/workflows/publish.yml
   workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write
-  attestations: write
-  id-token: write
-
-concurrency:
-  group: publish-runner-image
-  cancel-in-progress: false
 
 env:
   _EXPERIMENTAL_DAGGER_RUNNER_HOST: docker-image://registry.dagger.io/engine:v0.21.11@sha256:6b557cc8b5fdfee0e2e8c82d451ac922097a1255482143e1b96c0be3ff2a303c
 
 jobs:
+  smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: images/runner
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: araihu-runner:smoke
+      - name: Verify runner, CLI and operating system
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint dagger araihu-runner:smoke version | grep --fixed-strings 'dagger v0.21.11'
+          test "$(docker run --rm --entrypoint /actions-runner/bin/Runner.Listener araihu-runner:smoke --version)" = '2.338.2'
+          docker run --rm --entrypoint bash araihu-runner:smoke -ec 'source /etc/os-release; test "$ID" = ubuntu; test "$VERSION_ID" = 24.04'
+
   publish:
+    concurrency:
+      group: publish-runner-image
+      cancel-in-progress: false
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -49,7 +77,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/araihu/dagger:0.21.11
-            ghcr.io/araihu/dagger:0.21.11-runner-2.336.0
+            ghcr.io/araihu/dagger:0.21.11-runner-2.338.2
             ghcr.io/araihu/dagger:sha-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/araihu/dagger
@@ -68,4 +96,5 @@ jobs:
           docker pull "$IMAGE@$DIGEST"
           docker run --rm --entrypoint dagger "$IMAGE@$DIGEST" version \
             | grep --fixed-strings 'dagger v0.21.11'
+          test "$(docker run --rm --entrypoint /actions-runner/bin/Runner.Listener "$IMAGE@$DIGEST" --version)" = '2.338.2'
           printf 'Published `%s@%s`\n' "$IMAGE" "$DIGEST" >> "$GITHUB_STEP_SUMMARY"

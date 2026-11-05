@@ -20,7 +20,7 @@ in each consuming repository.
 ## Image
 
 ```text
-ghcr.io/araihu/dagger:0.21.11-runner-2.336.0
+ghcr.io/araihu/dagger:0.21.11-runner-2.338.2
 ```
 
 Production consumers should pin the published manifest digest, not a mutable
@@ -28,7 +28,7 @@ tag. CLI and Engine versions must match.
 
 ## Runner build inputs
 
-- Runner: `2.336.0-ubuntu-noble`, pinned by digest.
+- Runner: `2.338.2-ubuntu-noble`, pinned by digest.
 - Dagger CLI: `v0.21.11`, verified against the official release SHA-256.
 - Platform: `linux/amd64`.
 

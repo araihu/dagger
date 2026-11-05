@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM ghcr.io/myoung34/docker-github-actions-runner:2.336.0-ubuntu-noble@sha256:2840401868e84feb8e5a45d4ecc1009d66d8b21e7906324cf2a052c42ac79189
+FROM ghcr.io/myoung34/docker-github-actions-runner:2.338.2-ubuntu-noble@sha256:23e3a4a1da30de5b462ad0ae13d901288e803a688075c3b9b5bb79b7148c07fa
 
 ARG DAGGER_VERSION=0.21.11
 ARG DAGGER_SHA256=a2d3ef96e7305abc18663a3606d9c1c592278ba3c8f48e01d6be14eef72276ef
@@ -14,7 +14,8 @@ RUN curl --fail --silent --show-error --location \
     && tar --extract --gzip --file /tmp/dagger.tar.gz --directory /usr/local/bin dagger \
     && chmod 0755 /usr/local/bin/dagger \
     && rm /tmp/dagger.tar.gz \
-    && dagger version | grep --fixed-strings "dagger v${DAGGER_VERSION}"
+    && dagger version | grep --fixed-strings "dagger v${DAGGER_VERSION}" \
+    && test "$(/actions-runner/bin/Runner.Listener --version)" = "2.338.2"
 
 LABEL org.opencontainers.image.title="Araihu Dagger runner" \
       org.opencontainers.image.description="GitHub Actions runner with a pinned Dagger CLI" \
