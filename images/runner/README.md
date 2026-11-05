@@ -10,7 +10,7 @@ Published tags:
 
 ```text
 ghcr.io/araihu/dagger:0.21.11
-ghcr.io/araihu/dagger:0.21.11-runner-2.336.0
+ghcr.io/araihu/dagger:0.21.11-runner-2.338.2
 ```
 
 Production consumers must use the immutable manifest digest emitted by the
