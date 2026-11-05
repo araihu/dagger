@@ -16,10 +16,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: publish-runner-image
-  cancel-in-progress: false
-
 env:
   _EXPERIMENTAL_DAGGER_RUNNER_HOST: docker-image://registry.dagger.io/engine:v0.21.11@sha256:6b557cc8b5fdfee0e2e8c82d451ac922097a1255482143e1b96c0be3ff2a303c
 
@@ -47,6 +43,9 @@ jobs:
           docker run --rm --entrypoint bash araihu-runner:smoke -ec 'source /etc/os-release; test "$ID" = ubuntu; test "$VERSION_ID" = 24.04'
 
   publish:
+    concurrency:
+      group: publish-runner-image
+      cancel-in-progress: false
     if: github.event_name != 'pull_request'
     permissions:
       contents: read
