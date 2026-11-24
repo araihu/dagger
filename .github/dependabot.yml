@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directories:
+      - "/modules/*"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+    groups:
+      dagger-telemetry:
+        applies-to: security-updates
+        patterns:
+          - "github.com/dagger/otel-go"
+          - "go.opentelemetry.io/*"
