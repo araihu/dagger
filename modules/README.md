@@ -62,8 +62,12 @@ incompatible dependency pin, choose a Dagger release whose Go SDK supports
 the patched version. Upgrade all four modules in one pull request:
 
 1. Update the CLI version and archive checksums in `.github/scripts/setup-dagger.sh`
-   and `images/runner/Dockerfile`, the engine image digests and runner tags in
-   the module and publish workflows, and `engineVersion` in each `dagger.json`.
+   and `images/runner/Dockerfile`, and set `engineVersion` in each `dagger.json`.
+   Pin the engine image tag and digest in both `modules.yml` and `publish.yml`.
+   In `publish.yml`, update the runner image tags and the CLI version checks
+   for the PR smoke test and the published image. Refresh the versioned
+   download fixture and verify its checksum in `modules.yml`, then update the
+   release references in the root, runner and module READMEs.
 2. From the repository root, regenerate the bindings and manifests with the
    matching CLI and engine:
 
